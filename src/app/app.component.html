@@ -1,0 +1,162 @@
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand" aria-label="FlowWatch home">
+      <span class="brand-mark" aria-hidden="true">◒</span>
+      <span>Portfolio</span>
+    </div>
+
+    <div class="topbar-actions">
+      <span class="connection" [class.offline]="!isOnline" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        {{ isOnline ? 'Live' : 'Offline' }}
+      </span>
+      <button *ngIf="installAvailable" class="install-button" type="button" (click)="installApp()">Install app</button>
+      <button class="avatar" type="button" aria-label="Open user menu">SD</button>
+    </div>
+  </header>
+
+  <aside class="sidebar" aria-label="Primary navigation">
+    <div class="sidebar-title">Monitoring</div>
+    <button type="button" [class.active]="activeView === 'overview'" (click)="setView('overview')">
+      <span aria-hidden="true">⌂</span> Overview
+    </button>
+    <button type="button" [class.active]="activeView === 'sites'" (click)="setView('sites')">
+      <span aria-hidden="true">⌖</span> Sites
+      <span class="nav-count">{{ sites.length }}</span>
+    </button>
+    <button type="button" [class.active]="activeView === 'alerts'" (click)="setView('alerts')">
+      <span aria-hidden="true">!</span> Alerts
+      <span class="nav-count alert-count">{{ alerts.length }}</span>
+    </button>
+    <div class="sync-card">
+      <span class="sync-icon" aria-hidden="true">↻</span>
+      <div><strong>Last synced</strong><span>{{ lastSync }} today</span></div>
+    </div>
+  </aside>
+
+  <main id="main-content">
+    <div *ngIf="!isOnline" class="offline-banner" role="status">
+      You’re offline. Showing the most recently cached monitoring data.
+    </div>
+    <div *ngIf="updateAvailable" class="update-banner" role="status">
+      A new version is available.
+      <button type="button" (click)="activateUpdate()">Update now</button>
+    </div>
+    <div class="data-source" [class.fallback]="usingFallback" role="status">
+      <span class="source-dot" aria-hidden="true"></span>
+      <span *ngIf="isLoading">Loading Open-Meteo flood data…</span>
+      <span *ngIf="!isLoading && !usingFallback">Live Open-Meteo / GloFAS data</span>
+      <span *ngIf="!isLoading && usingFallback">Demo fallback data</span>
+      <button type="button" (click)="refreshData()" [disabled]="isLoading">Refresh</button>
+    </div>
+
+    <ng-container *ngIf="activeView === 'overview'">
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">Network overview</p>
+          <h1>Good morning, Safa</h1>
+          <p>Here’s what’s happening across your monitored sites.</p>
+        </div>
+        <label class="site-picker">
+          <span>Viewing site</span>
+          <select [(ngModel)]="selectedSiteId" (ngModelChange)="loadReadings()" aria-label="Select monitoring site">
+            <option *ngFor="let site of sites" [ngValue]="site.id">{{ site.name }}</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="stats-grid" aria-label="Network summary">
+        <article class="stat-card">
+          <div class="stat-icon teal" aria-hidden="true">⌖</div>
+          <div><span>Total sites</span><strong>{{ sites.length }}</strong><small>All reporting</small></div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon green" aria-hidden="true">✓</div>
+          <div><span>Normal</span><strong>{{ normalSites }}</strong><small>Within thresholds</small></div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon amber" aria-hidden="true">!</div>
+          <div><span>Active alerts</span><strong>{{ alerts.length }}</strong><small>Needs attention</small></div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel chart-panel">
+          <div class="panel-heading">
+          <div><p class="eyebrow">{{ selectedSite.name }}</p><h2>River discharge trend</h2></div>
+            <span class="time-range">Past 7 days + forecast</span>
+          </div>
+          <div class="chart-summary">
+            <strong>{{ selectedSite.discharge | number:'1.2-2' }} {{ selectedSite.dischargeUnit }}</strong>
+            <span>Current discharge</span>
+          </div>
+          <div class="chart-container">
+            <canvas
+              baseChart
+              [data]="dischargeChartData"
+              [options]="dischargeChartOptions"
+              [type]="'line'">
+            </canvas>
+          </div>
+          <div class="chart-axis" aria-hidden="true"><span>{{ firstReadingTime }}</span><span>Today</span><span>{{ lastReadingTime }}</span></div>
+        </article>
+
+        <article class="panel readings-panel">
+          <div class="panel-heading"><div><p class="eyebrow">Live telemetry</p><h2>Current readings</h2></div></div>
+          <dl>
+            <div><dt>River discharge</dt><dd>{{ selectedSite.discharge | number:'1.2-2' }}<span>{{ selectedSite.dischargeUnit }}</span></dd></div>
+            <div><dt>Change from yesterday</dt><dd>{{ selectedSite.changePercent > 0 ? '+' : '' }}{{ selectedSite.changePercent }}<span>%</span></dd></div>
+            <div><dt>Forecast peak</dt><dd>{{ selectedSite.forecastPeak | number:'1.2-2' }}<span>{{ selectedSite.dischargeUnit }}</span></dd></div>
+            <div><dt>Last reading</dt><dd class="small-reading">{{ selectedSite.updated }}</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="panel alerts-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Attention needed</p><h2>Recent alerts</h2></div>
+          <button type="button" class="text-button" (click)="setView('alerts')">View all</button>
+        </div>
+        <div class="alert-list">
+          <p *ngIf="alerts.length === 0" class="empty-state">No rapid discharge increases across the loaded locations.</p>
+          <div *ngFor="let alert of alerts" class="alert-row">
+            <span class="severity-icon" [class.critical]="alert.severity === 'Critical'" aria-hidden="true">!</span>
+            <div><strong>{{ alert.site }}</strong><span>{{ alert.message }}</span></div>
+            <time>{{ alert.time }}</time>
+          </div>
+        </div>
+      </section>
+    </ng-container>
+
+    <ng-container *ngIf="activeView === 'sites'">
+      <section class="page-heading simple"><div><p class="eyebrow">Network</p><h1>Monitoring sites</h1><p>Select a site to view its latest readings.</p></div></section>
+      <section class="site-list">
+        <button *ngFor="let site of sites" type="button" class="site-card" (click)="selectSite(site)">
+          <span class="site-status" [class.warning]="site.status === 'Warning'" [class.critical]="site.status === 'Critical'"></span>
+          <span class="site-main"><strong>{{ site.name }}</strong><small>{{ site.location }}</small></span>
+          <span class="site-level"><strong>{{ site.discharge | number:'1.2-2' }} {{ site.dischargeUnit }}</strong><small>Discharge</small></span>
+          <span class="status-pill" [class.warning]="site.status === 'Warning'" [class.critical]="site.status === 'Critical'">{{ site.status }}</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </section>
+    </ng-container>
+
+    <ng-container *ngIf="activeView === 'alerts'">
+      <section class="page-heading simple"><div><p class="eyebrow">Attention needed</p><h1>Active alerts</h1><p>Review current network exceptions and thresholds.</p></div></section>
+      <section class="alert-cards">
+        <div *ngIf="alerts.length === 0" class="panel empty-state">No rapid discharge increases across the loaded locations.</div>
+        <article *ngFor="let alert of alerts" class="alert-card" [class.critical]="alert.severity === 'Critical'">
+          <div class="severity-icon" [class.critical]="alert.severity === 'Critical'" aria-hidden="true">!</div>
+          <div><span class="status-pill" [class.critical]="alert.severity === 'Critical'">{{ alert.severity }}</span><h2>{{ alert.site }}</h2><p>{{ alert.message }}</p><time>Today at {{ alert.time }}</time></div>
+          <button type="button">Review</button>
+        </article>
+      </section>
+    </ng-container>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+    <button type="button" [class.active]="activeView === 'overview'" (click)="setView('overview')"><span aria-hidden="true">⌂</span>Overview</button>
+    <button type="button" [class.active]="activeView === 'sites'" (click)="setView('sites')"><span aria-hidden="true">⌖</span>Sites</button>
+    <button type="button" [class.active]="activeView === 'alerts'" (click)="setView('alerts')"><span aria-hidden="true">!</span>Alerts</button>
+  </nav>
+</div>
