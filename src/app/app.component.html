@@ -2,7 +2,7 @@
   <header class="topbar">
     <div class="brand" aria-label="FlowWatch home">
       <span class="brand-mark" aria-hidden="true">◒</span>
-      <span>Portfolio</span>
+      <span>Portfolio for Angular</span>
     </div>
 
     <div class="topbar-actions">
@@ -45,7 +45,7 @@
     <div class="data-source" [class.fallback]="usingFallback" role="status">
       <span class="source-dot" aria-hidden="true"></span>
       <span *ngIf="isLoading">Loading Open-Meteo flood data…</span>
-      <span *ngIf="!isLoading && !usingFallback">Live Open-Meteo / GloFAS data</span>
+      <span *ngIf="!isLoading && !usingFallback">Live data from open-meteo.com</span>
       <span *ngIf="!isLoading && usingFallback">Demo fallback data</span>
       <button type="button" (click)="refreshData()" [disabled]="isLoading">Refresh</button>
     </div>
@@ -54,7 +54,7 @@
       <section class="page-heading">
         <div>
           <p class="eyebrow">Network overview</p>
-          <h1>Good morning, Safa</h1>
+          <h1>Water Monitoring Dashboard - Built by Safa Dana</h1>
           <p>Here’s what’s happening across your monitored sites.</p>
         </div>
         <label class="site-picker">
