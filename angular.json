@@ -44,24 +44,6 @@
             "development": { "buildTarget": "water-monitor-pwa:build:development" }
           },
           "defaultConfiguration": "development"
-        },
-        "test": {
-          "builder": "@angular-devkit/build-angular:karma",
-          "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
-            "tsConfig": "tsconfig.spec.json",
-            "assets": [
-              "src/favicon.svg",
-              "src/manifest.webmanifest",
-              "src/assets"
-            ],
-            "styles": [
-              "src/styles.scss"
-            ]
-          }
         }
       }
     }
